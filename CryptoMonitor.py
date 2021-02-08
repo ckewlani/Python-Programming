@@ -1,7 +1,9 @@
 import json
+import re
 import urllib
 import requests
-import re
+import threading
+
 
 class monitorCrypto:
 
@@ -14,18 +16,19 @@ class monitorCrypto:
     chatid='557428602'
     msg=''
 
-
     def getCoinbaseRates(self):
         for i in self.cryptoPair_coinb:
             crypto = i.split(";")[0]
             transtype = i.split(";")[1]
-
+            threading.Thread(target=self.callcoinbapi,args=(crypto,transtype,)).start()
+        print(self.currPrice)
+    def callcoinbapi(self,crypto,transtype):
             #print("https://api.coinbase.com/v2/prices/" + crypto + "/" + transtype)
             r = requests.get("https://api.coinbase.com/v2/prices/" + crypto + "/" + transtype).content
             coinbResponse = json.loads(r)
             #print(coinbResponse['data']['amount'])
             self.currPrice[crypto[0:4:1] + transtype + "-coinbase"] = coinbResponse['data']['amount']
-        print(self.currPrice)
+
 
     def getZebpayRates(self):
         for i in self.crypto_zeb:
@@ -46,7 +49,7 @@ class monitorCrypto:
             #print(i+" "+unoresp[i]['buying_price'])
             self.currPrice[i+"-buy-unocoin"] = unoresp[i]['buying_price']
             self.currPrice[i+"-sell-unocoin"] = unoresp[i]['selling_price']
-        print(self.currPrice)
+        #print(self.currPrice)
 
     def getCoindcxRates(self):
         r= requests.get("https://api.coindcx.com/exchange/ticker").content
@@ -56,8 +59,8 @@ class monitorCrypto:
             if not re.match("BTCINR|LTCINR|ETHINR|XRPINR|BCHINR",resp[i]['market']):
                 continue
         #print(resp[i]['market'][0:3]+"-buy-"+f"coindcx:{resp[i]['bid']}")
-        self.currPrice[resp[i]['market'][0:3]+"-buy-"+"coindcx"] = resp[i]['bid']
-        self.currPrice[resp[i]['market'][0:3]+"-sell-"+"coindcx"] = resp[i]['ask']
+        self.currPrice[resp[i]['market'][0:3]+"-sell-"+"coindcx"] = resp[i]['bid']
+        self.currPrice[resp[i]['market'][0:3]+"-buy-"+"coindcx"] = resp[i]['ask']
 
     def createPriceDiff(self):
 
@@ -85,7 +88,8 @@ class monitorCrypto:
             crypto=k.split("-")[0]
             buyplat= k.split("-")[1]
             sellplat= k.split("-")[2]
-            self.msg=self.msg+'\n'+f'{i}. The price of {crypto} in {buyplat} is {round(float(self.currPrice[crypto+"-buy-"+buyplat]),2)} and in {sellplat} is {round(float(self.currPrice[crypto+"-sell-"+sellplat]),2)}.\nProfit prospect: {round(float(pp),2)} percent.'
+            if(pp>7):
+                self.msg=self.msg+'\n'+f'{i}. The price of {crypto} in {buyplat} is {round(float(self.currPrice[crypto+"-buy-"+buyplat]),2)} and in {sellplat} is {round(float(self.currPrice[crypto+"-sell-"+sellplat]),2)}.\nProfit prospect: {round(float(pp),2)} percent.'
             i=i+1
         print(f'https://api.telegram.org/bot{self.telegramapikey}/sendmessage?chat_id=-{self.chatid}&text={urllib.parse.quote_plus(self.msg)}')
 
