@@ -9,8 +9,8 @@ class monitorCrypto:
 
     currPrice = {}
     cryptoPair_coinb = ['BTC-INR;buy', 'BTC-INR;sell', 'LTC-INR;buy', 'LTC-INR;sell', 'ETH-INR;buy', 'ETH-INR;sell',
-              'BCH-INR;buy', 'BCH-INR;sell']
-    crypto_zeb = ['BTC-INR','LTC-INR','ETH-INR','XRP-INR','BCH-INR']
+              'BCH-INR;buy', 'BCH-INR;sell', 'EOS-INR;buy','EOS-INR;sell',]
+    crypto_zeb = ['BTC-INR','LTC-INR','ETH-INR','XRP-INR','BCH-INR','EOS-INR','TRX-INR']
     PriceDiff={}
     telegramapikey= "1654450890:AAGIcNXyJE6zJUqi6bm1dX5fh6Ng2-0GYRw"
     chatid='557428602'
@@ -76,7 +76,7 @@ class monitorCrypto:
                 #print(f'The price of {i.split("-")[0]} in {i.split("-")[2]} is {vi} and in {j.split("-")[2]} is {vj}.\nProfit prospect: {(float(vj)-float(vi))*100/float(vi)}%')
                 self.PriceDiff[i.split("-")[0] +'-'+ i.split("-")[2]+'-'+j.split("-")[2]] = (float(vj)-float(vi))*100/float(vi)
         sortedPrDif= sorted(self.PriceDiff.items(), key=lambda kv: kv[1], reverse=True)
-        #print(self.PriceDiff)
+        print(self.PriceDiff)
         print(sortedPrDif)
         self.PriceDiff = sortedPrDif
 
@@ -88,7 +88,7 @@ class monitorCrypto:
             crypto=k.split("-")[0]
             buyplat= k.split("-")[1]
             sellplat= k.split("-")[2]
-            if(pp>7):
+            if(pp>6):
                 self.msg=self.msg+'\n'+f'{i}. The price of {crypto} in {buyplat} is {round(float(self.currPrice[crypto+"-buy-"+buyplat]),2)} and in {sellplat} is {round(float(self.currPrice[crypto+"-sell-"+sellplat]),2)}.\nProfit prospect: {round(float(pp),2)} percent.'
             i=i+1
         print(f'https://api.telegram.org/bot{self.telegramapikey}/sendmessage?chat_id=-{self.chatid}&text={urllib.parse.quote_plus(self.msg)}')
@@ -106,4 +106,5 @@ obj.getZebpayRates()
 obj.getUnocoinRates()
 obj.createPriceDiff()
 obj.createmessage()
+print(obj.currPrice)
 obj.sendNotification()
