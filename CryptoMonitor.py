@@ -9,7 +9,7 @@ class monitorCrypto:
 
     currPrice = {}
     cryptoPair_coinb = ['BTC-INR;buy', 'BTC-INR;sell', 'LTC-INR;buy', 'LTC-INR;sell', 'ETH-INR;buy', 'ETH-INR;sell',
-              'BCH-INR;buy', 'BCH-INR;sell', 'EOS-INR;buy','EOS-INR;sell',]
+              'BCH-INR;buy', 'BCH-INR;sell', 'EOS-INR;buy','EOS-INR;sell','XLM-INR;buy','XLM-INR;sell']
     crypto_zeb = ['BTC-INR','LTC-INR','ETH-INR','XRP-INR','BCH-INR','EOS-INR','TRX-INR']
     PriceDiff={}
     telegramapikey= "1654450890:AAGIcNXyJE6zJUqi6bm1dX5fh6Ng2-0GYRw"
@@ -21,10 +21,11 @@ class monitorCrypto:
             crypto = i.split(";")[0]
             transtype = i.split(";")[1]
             threading.Thread(target=self.callcoinbapi,args=(crypto,transtype,)).start()
-        print(self.currPrice)
+        #print(self.currPrice)
     def callcoinbapi(self,crypto,transtype):
             #print("https://api.coinbase.com/v2/prices/" + crypto + "/" + transtype)
             r = requests.get("https://api.coinbase.com/v2/prices/" + crypto + "/" + transtype).content
+            #print(r)
             coinbResponse = json.loads(r)
             #print(coinbResponse['data']['amount'])
             self.currPrice[crypto[0:4:1] + transtype + "-coinbase"] = coinbResponse['data']['amount']
@@ -56,11 +57,22 @@ class monitorCrypto:
         resp= json.loads(r)
         #print(resp)
         for i in range(len(resp)):
-            if not re.match("BTCINR|LTCINR|ETHINR|XRPINR|BCHINR",resp[i]['market']):
+            if not re.match(r"BTCINR|LTCINR|ETHINR|XRPINR|BCHINR",resp[i]['market']):
                 continue
         #print(resp[i]['market'][0:3]+"-buy-"+f"coindcx:{resp[i]['bid']}")
         self.currPrice[resp[i]['market'][0:3]+"-sell-"+"coindcx"] = resp[i]['bid']
         self.currPrice[resp[i]['market'][0:3]+"-buy-"+"coindcx"] = resp[i]['ask']
+
+    def getBitBnsRates(self):
+        r=requests.get("https://bitbns.com/order/getTickerWithVolume/").content
+        resp= json.loads(r)
+        for k in resp.keys():
+
+            if not re.match(r"BTC|ETH|XRP|XLM|TRX|BCH|EOS|LTC",k) or len(k) != 3:
+                continue
+            self.currPrice[k+"-buy-bitbns"] = resp[k]['lowest_sell_bid']
+            self.currPrice[k+"-sell-bitbns"] = resp[k]['highest_buy_bid']
+            #print(self.currPrice)
 
     def createPriceDiff(self):
 
@@ -76,8 +88,8 @@ class monitorCrypto:
                 #print(f'The price of {i.split("-")[0]} in {i.split("-")[2]} is {vi} and in {j.split("-")[2]} is {vj}.\nProfit prospect: {(float(vj)-float(vi))*100/float(vi)}%')
                 self.PriceDiff[i.split("-")[0] +'-'+ i.split("-")[2]+'-'+j.split("-")[2]] = (float(vj)-float(vi))*100/float(vi)
         sortedPrDif= sorted(self.PriceDiff.items(), key=lambda kv: kv[1], reverse=True)
-        print(self.PriceDiff)
-        print(sortedPrDif)
+        #print(self.PriceDiff)
+        #print(sortedPrDif)
         self.PriceDiff = sortedPrDif
 
     def createmessage(self):
@@ -88,21 +100,24 @@ class monitorCrypto:
             crypto=k.split("-")[0]
             buyplat= k.split("-")[1]
             sellplat= k.split("-")[2]
-            if(pp>6):
+            if(pp>6.5):
                 self.msg=self.msg+'\n'+f'{i}. The price of {crypto} in {buyplat} is {round(float(self.currPrice[crypto+"-buy-"+buyplat]),2)} and in {sellplat} is {round(float(self.currPrice[crypto+"-sell-"+sellplat]),2)}.\nProfit prospect: {round(float(pp),2)} percent.'
             i=i+1
-        print(f'https://api.telegram.org/bot{self.telegramapikey}/sendmessage?chat_id=-{self.chatid}&text={urllib.parse.quote_plus(self.msg)}')
+        #print(f'https://api.telegram.org/bot{self.telegramapikey}/sendmessage?chat_id=-{self.chatid}&text={urllib.parse.quote_plus(self.msg)}')
 
     def sendNotification(self):
         r=requests.get(f'https://api.telegram.org/bot{self.telegramapikey}/sendmessage?chat_id=-{self.chatid}&text={ urllib.parse.quote_plus(self.msg)}')
-        print(r)
+        #print(r)
 
 
 #def callmonitor():
 obj = monitorCrypto()
+
+
 obj.getCoindcxRates()
 obj.getCoinbaseRates()
 obj.getZebpayRates()
+obj.getBitBnsRates()
 obj.getUnocoinRates()
 obj.createPriceDiff()
 obj.createmessage()
